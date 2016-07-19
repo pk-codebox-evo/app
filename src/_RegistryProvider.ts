@@ -1,4 +1,6 @@
+import { ComposeFactory } from 'dojo-compose/compose';
 import Promise from 'dojo-shim/Promise';
+import { Child } from 'dojo-widgets/mixins/interfaces';
 
 import {
 	ActionLike,
@@ -31,12 +33,28 @@ export interface Registry<T> {
 }
 
 /**
+ * Registry to (asynchronously) get widget instances by their ID, as well as create new instances that are then added
+ * to the registry.
+ */
+export interface WidgetRegistry<T extends Child> extends Registry<T> {
+	/**
+	 * Create a new instance and add it to the registry.
+	 *
+	 * @param factory Factory to create the new instance
+	 * @param options Options to be passed to the factory. Automatically extended with the `registryProvider` option,
+	 *   and the `stateFrom` option if an `id` was present and the application factory has a default store.
+	 * @return A promise for a tuple containing the ID of the created widget, and the widget instance itself.
+	 */
+	create<U extends T, O>(factory: ComposeFactory<U, O>, options?: O): Promise<[string, U]>;
+}
+
+/**
  * Provides access to read-only registries for actions, stores and widgets.
  */
 export default class RegistryProvider {
 	private actionRegistry: Registry<ActionLike>;
 	private storeRegistry: Registry<StoreLike>;
-	private widgetRegistry: Registry<WidgetLike>;
+	private widgetRegistry: WidgetRegistry<WidgetLike>;
 
 	private combinedRegistry: CombinedRegistry;
 	constructor(combinedRegistry: CombinedRegistry) {
@@ -51,7 +69,7 @@ export default class RegistryProvider {
 	 */
 	get(type: 'actions'): Registry<ActionLike>;
 	get(type: 'stores'): Registry<StoreLike>;
-	get(type: 'widgets'): Registry<WidgetLike>;
+	get(type: 'widgets'): WidgetRegistry<WidgetLike>;
 	get(type: string): Registry<any>;
 	get(type: string): Registry<any> {
 		switch (type) {
@@ -67,6 +85,7 @@ export default class RegistryProvider {
 				});
 			case 'widgets':
 				return this.widgetRegistry || (this.widgetRegistry = {
+					create: this.combinedRegistry.createWidget,
 					get: this.combinedRegistry.getWidget,
 					identify: this.combinedRegistry.identifyWidget
 				});
