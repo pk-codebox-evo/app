@@ -5,8 +5,7 @@ import * as assert from 'intern/chai!assert';
 
 import createApp, {
 	CombinedRegistry,
-	Identifier,
-	StoreLike
+	Identifier
 } from 'src/createApp';
 
 import { stub as stubActionFactory } from '../../fixtures/action-factory';
@@ -589,7 +588,7 @@ registerSuite({
 			'makes the action observe state from the store'() {
 				const action = createAction();
 				const handle: Handle = { destroy() {} };
-				const received: { handle: Object, id: Identifier, store: StoreLike } = {
+				const received: { handle: Object, id: Identifier, store: any } = {
 					handle: null,
 					id: null,
 					store: null
@@ -628,7 +627,7 @@ registerSuite({
 			'stateFrom may be an actual store, rather than a store identifier'() {
 				const action = createAction();
 				const handle: Handle = { destroy() {} };
-				const received: { handle: Object, id: Identifier, store: StoreLike } = {
+				const received: { handle: Object, id: Identifier, store: any } = {
 					handle: null,
 					id: null,
 					store: null
