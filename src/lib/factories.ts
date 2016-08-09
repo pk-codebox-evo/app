@@ -13,6 +13,9 @@ import {
 	StoreDefinition,
 	StoreFactory,
 	StoreLike,
+	WidgetChildren,
+	WidgetChildrenLookup,
+	WidgetChildrenMap,
 	WidgetDefinition,
 	WidgetFactory,
 	WidgetLike
@@ -31,6 +34,21 @@ function resolveStore(registry: CombinedRegistry, definition: ActionDefinition |
 	}
 
 	return registry.getStore(<string> stateFrom);
+}
+
+function resolveChildren(registry: CombinedRegistry, children: WidgetChildrenLookup): Promise<WidgetChildren> {
+	if (Array.isArray(children)) {
+		return Promise.all(children.map((id) => registry.getWidget(id)));
+	}
+	else {
+		const keys = Object.keys(children);
+		return Promise.all(keys.map((key) => registry.getWidget(children[key]))).then((widgets) => {
+			return keys.reduce((acc, key, index) => {
+				acc[key] = widgets[index];
+				return acc;
+			}, {} as WidgetChildrenMap);
+		});
+	}
 }
 
 type Factory = ActionFactory | StoreFactory | WidgetFactory;
@@ -172,11 +190,14 @@ export function makeStoreFactory(definition: StoreDefinition, resolveMid: Resolv
 	};
 }
 
-export function makeWidgetFactory(definition: WidgetDefinition, resolveMid: ResolveMid, registry: CombinedRegistry): WidgetFactory {
+export function makeWidgetFactory(definition: WidgetDefinition, children: WidgetChildrenLookup, resolveMid: ResolveMid, registry: CombinedRegistry): WidgetFactory {
 	if (!('factory' in definition || 'instance' in definition)) {
 		throw new TypeError('Widget definitions must specify either the factory or instance option');
 	}
 	if ('instance' in definition) {
+		if ('children' in definition) {
+			throw new TypeError('Cannot specify children option when widget definition points directly at an instance');
+		}
 		if ('listeners' in definition) {
 			throw new TypeError('Cannot specify listeners option when widget definition points directly at an instance');
 		}
@@ -190,8 +211,8 @@ export function makeWidgetFactory(definition: WidgetDefinition, resolveMid: Reso
 
 	const { options: rawOptions } = definition;
 	if (rawOptions) {
-		if ('id' in rawOptions || 'listeners' in rawOptions || 'stateFrom' in rawOptions) {
-			throw new TypeError('id, listeners and stateFrom options should be in the widget definition itself, not its options value');
+		if ('children' in rawOptions || 'id' in rawOptions || 'listeners' in rawOptions || 'stateFrom' in rawOptions) {
+			throw new TypeError('children, id, listeners and stateFrom options should be in the widget definition itself, not its options value');
 		}
 		if ('registryProvider' in rawOptions) {
 			throw new TypeError('registryProvider option must not be specified');
@@ -205,6 +226,7 @@ export function makeWidgetFactory(definition: WidgetDefinition, resolveMid: Reso
 
 	return ({ registryProvider, stateFrom: defaultStore }: BaseOptions) => {
 		interface Options extends BaseOptions {
+			children?: WidgetChildren;
 			id: string;
 			listeners?: EventedListenersMap;
 		}
@@ -215,14 +237,19 @@ export function makeWidgetFactory(definition: WidgetDefinition, resolveMid: Reso
 		}, rawOptions);
 
 		return Promise.all<any>([
+			children ? resolveChildren(registry, children) : null,
 			resolveFactory('widget', definition, resolveMid),
 			resolveListenersMap(registry, definition.listeners),
 			resolveStore(registry, definition)
-		]).then(([_factory, _listeners, _store]) => {
-			const factory = <WidgetFactory> _factory;
-			const listeners = <EventedListenersMap> _listeners;
-			const store = <StoreLike> _store || defaultStore;
+		]).then(([_children, _factory, _listeners, _store]) => {
+			const children: WidgetChildren = _children;
+			const factory: WidgetFactory = _factory;
+			const listeners: EventedListenersMap = _listeners;
+			const store: StoreLike = _store || defaultStore;
 
+			if (children) {
+				options.children = children;
+			}
 			if (listeners) {
 				options.listeners = listeners;
 			}

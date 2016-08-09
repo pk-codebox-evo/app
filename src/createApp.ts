@@ -162,6 +162,13 @@ export interface StoreDefinition extends ItemDefinition<StoreFactory, StoreLike>
  */
 export interface WidgetDefinition extends ItemDefinition<WidgetFactory, WidgetLike> {
 	/**
+	 * Any children that should automatically be resolved and set on the parent (the widget being defined).
+	 *
+	 * Child definitions are available across the app. They are not scoped to their parent.
+	 */
+	children?: WidgetChildrenDefinition;
+
+	/**
 	 * Any listeners that should automatically be attached to the widget.
 	 */
 	listeners?: WidgetListenersMap;
@@ -174,11 +181,17 @@ export interface WidgetDefinition extends ItemDefinition<WidgetFactory, WidgetLi
 	stateFrom?: Identifier | StoreLike;
 
 	/**
-	 * Optional options object passed to the widget factory. Must not contain `id`, `listeners` and `stateFrom`
-	 * properties.
+	 * Optional options object passed to the widget factory. Must not contain `children`, `id`, `listeners` and
+	 * `stateFrom` properties.
 	 */
 	options?: Object;
 }
+
+export type IdentifierMap = { [key: string]: Identifier };
+export type WidgetChildren = WidgetLike[] | WidgetChildrenMap;
+export type WidgetChildrenDefinition = (Identifier | WidgetDefinition)[] | { [key: string]: Identifier | WidgetDefinition };
+export type WidgetChildrenLookup = Identifier[] | IdentifierMap;
+export type WidgetChildrenMap = { [key: string]: WidgetLike };
 
 /**
  * A listener for widgets, as used in definitions. May be an identifier for an action or an actual event listener.
@@ -665,10 +678,42 @@ const createApp = compose({
 		}
 
 		if (widgets) {
-			for (const definition of widgets) {
-				const factory = makeWidgetFactory(definition, app._resolveMid, app);
+			const loadWidget = (definition: WidgetDefinition) => {
+				const { children } = definition;
+
+				let lookup: WidgetChildrenLookup = null;
+				if (Array.isArray(children)) {
+					lookup = children.map((definition) => {
+						if (typeof definition === 'string') {
+							return definition;
+						}
+						else {
+							loadWidget(definition);
+							return definition.id;
+						}
+					});
+				}
+				else if (children) {
+					lookup = Object.keys(children).reduce((acc, key) => {
+						const definition = children[key];
+						if (typeof definition === 'string') {
+							acc[key] = definition;
+						}
+						else {
+							loadWidget(definition);
+							acc[key] = definition.id;
+						}
+						return acc;
+					}, {} as IdentifierMap);
+				}
+
+				const factory = makeWidgetFactory(definition, lookup, app._resolveMid, app);
 				const handle = app.registerWidgetFactory(definition.id, factory);
 				handles.push(handle);
+			};
+
+			for (const definition of widgets) {
+				loadWidget(definition);
 			}
 		}
 
