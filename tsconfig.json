@@ -23,6 +23,7 @@
 		"./src/lib/InstanceRegistry.ts",
 		"./src/lib/makeIdGenerator.ts",
 		"./src/lib/moduleResolver.ts",
+		"./src/lib/parseJsonAttribute.ts",
 		"./src/lib/realizeCustomElements.ts",
 		"./src/lib/RegistryProvider.ts",
 		"./src/lib/resolveListenersMap.ts",
