@@ -19,6 +19,7 @@
 		"./typings/index.d.ts",
 		"./src/createApp.ts",
 		"./src/IdentityRegistry.ts",
+		"./src/lib/extractRegistrationElements.ts",
 		"./src/lib/factories.ts",
 		"./src/lib/InstanceRegistry.ts",
 		"./src/lib/makeIdGenerator.ts",

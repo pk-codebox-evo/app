@@ -8,6 +8,7 @@ import WeakMap from 'dojo-shim/WeakMap';
 import { Renderable } from 'dojo-widgets/mixins/createRenderable';
 
 import IdentityRegistry from './IdentityRegistry';
+import extractRegistrationElements from './lib/extractRegistrationElements';
 import {
 	makeActionFactory,
 	makeCustomElementFactory,
@@ -689,7 +690,25 @@ const createApp = compose({
 			registryProvider
 		} = app;
 
-		return realizeCustomElements(defaultStore, registerInstance.bind(app), registry, registryProvider, root);
+		return extractRegistrationElements(app._resolveMid, root).then((definitions) => {
+			const definitionHandle = app.loadDefinition(definitions);
+
+			return realizeCustomElements(
+				defaultStore,
+				registerInstance.bind(app),
+				registry,
+				registryProvider,
+				root
+			).then((realizationHandle) => {
+				return {
+					destroy() {
+						this.destroy = noop;
+						definitionHandle.destroy();
+						realizationHandle.destroy();
+					}
+				};
+			});
+		});
 	},
 
 	_registerInstance(instance: WidgetLike, id: string): Handle {
