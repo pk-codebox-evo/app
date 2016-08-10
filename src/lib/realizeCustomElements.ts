@@ -26,7 +26,10 @@ const reservedNames = new Set([
 	'font-face-format',
 	'font-face-name',
 	'missing-glyph',
-	// These are reserved by this module.
+	// These are reserved by this package.
+	'app-action',
+	'app-actions',
+	'app-store',
 	'widget-instance',
 	'widget-projector'
 ]);

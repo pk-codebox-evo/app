@@ -114,6 +114,9 @@ registerSuite({
 					'font-face-format',
 					'font-face-name',
 					'missing-glyph',
+					'app-action',
+					'app-actions',
+					'app-store',
 					'widget-instance',
 					'widget-projector'
 				].forEach((name) => {
